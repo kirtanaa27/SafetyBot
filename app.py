@@ -1,50 +1,59 @@
 import streamlit as st
 import PyPDF2
 from transformers import pipeline
-from huggingface_hub import cached_download
 import tempfile
 
 # Download and load pre-trained QA model
 model = pipeline("question-answering", model='distilbert-base-cased-distilled-squad')
 
 
-def answer_question(pdf_path, question):
-
-    # Extract text from PDF
-    with open(pdf_path, "rb") as f:
-        pdf_reader = PyPDF2.PdfReader(f)
-        page_content = ""
-        for page in pdf_reader.pages:
-            page_content += page.extract_text()
+def answer_question(pdf_texts, question):
+    # Concatenate the text from all PDFs
+    combined_text = "\n".join(pdf_texts)
 
     # Use Hugging Face model for QA
-    answer = model(question=question, context=page_content)
+    answer = model(question=question, context=combined_text)
     return answer
 
 
 def main():
     st.title("Safety Chatbot")
 
-    # Upload PDF file
-    uploaded_file = st.file_uploader("Upload PDF")
+    # Upload multiple PDF files
+    uploaded_files = st.file_uploader("Upload PDFs", accept_multiple_files=True)
 
     # Initialize questions and answers list in session state
     if "qa_history" not in st.session_state:
         st.session_state.qa_history = []
 
-    # Ask questions
-    if uploaded_file:
-        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            temp_file.write(uploaded_file.read())
-            st.write(f"File uploaded: {uploaded_file.name}")
+    # Store text from each PDF
+    pdf_texts = []
 
-            question = st.text_input("Ask your question about the PDF:")
+    # Ask general questions
+    question = st.text_input("Ask your general question:")
 
-            if question:
-                answer = answer_question(temp_file.name, question)
-                st.write(f"Answer: {answer['answer']}")
-                st.write("---")
-                st.session_state.qa_history.append({"question": question, "answer": answer['answer']})
+    # Process uploaded files
+    if uploaded_files:
+        for file_idx, uploaded_file in enumerate(uploaded_files):
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                temp_file.write(uploaded_file.read())
+                st.write(f"File {file_idx + 1} uploaded: {uploaded_file.name}")
+
+                # Extract text from PDF
+                with open(temp_file.name, "rb") as f:
+                    pdf_reader = PyPDF2.PdfReader(f)
+                    page_content = ""
+                    for page in pdf_reader.pages:
+                        page_content += page.extract_text()
+
+                    pdf_texts.append(page_content)
+
+        # Display general question and answer
+        if question:
+            answer = answer_question(pdf_texts, question)
+            st.write(f"Answer: {answer['answer']}")
+            st.write("---")
+            st.session_state.qa_history.append({"question": question, "answer": answer['answer']})
 
         # Display question and answer history
         st.subheader("Chat History:")
