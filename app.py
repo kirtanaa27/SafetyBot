@@ -1,5 +1,5 @@
 import streamlit as st
-import PyPDF2
+import fitz  # PyMuPDF
 from transformers import pipeline
 import tempfile
 
@@ -38,14 +38,15 @@ def main():
             with tempfile.NamedTemporaryFile(delete=False) as temp_file:
                 temp_file.write(uploaded_file.read())
 
-                # Extract text from PDF
-                with open(temp_file.name, "rb") as f:
-                    pdf_reader = PyPDF2.PdfReader(f)
-                    page_content = ""
-                    for page in pdf_reader.pages:
-                        page_content += page.extract_text()
+                # Extract text from PDF using PyMuPDF
+                pdf_document = fitz.open(temp_file.name)
+                page_content = ""
+                for page_number in range(pdf_document.page_count):
+                    page = pdf_document[page_number]
+                    page_text = page.get_text("text")
+                    page_content += page_text
 
-                    pdf_texts.append(page_content)
+                pdf_texts.append(page_content)
 
         # Display general question and answer
         if question:
