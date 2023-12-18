@@ -37,7 +37,6 @@ def main():
         for file_idx, uploaded_file in enumerate(uploaded_files):
             with tempfile.NamedTemporaryFile(delete=False) as temp_file:
                 temp_file.write(uploaded_file.read())
-                st.write(f"File {file_idx + 1} uploaded: {uploaded_file.name}")
 
                 # Extract text from PDF
                 with open(temp_file.name, "rb") as f:
